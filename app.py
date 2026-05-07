@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import date
 
 # Configuração da Página com sua Identidade Visual
-st.set_page_config(page_title="Treino Pro - Pedal", layout="centered")
+st.set_page_config(page_title="Meu Treino Bike", layout="centered")
 
 # CSS para aplicar as cores: Preto, Azul Escuro e Dourado
 st.markdown("""
@@ -17,7 +17,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🦅 Painel de Treino Águia")
+st.title("🚲 Treino Luiz")
 st.write(f"Registro de: **{date.today().strftime('%d/%m/%Y')}**")
 
 # Dicionário Completo baseado na sua Planilha
