@@ -6,7 +6,7 @@ import os
 # 1. AJUSTE DE FUSO HORÁRIO (Brasília/Betim)
 data_hoje = (datetime.now() - timedelta(hours=3)).date()
 
-st.set_page_config(page_title="Treino Águia Pro", layout="centered")
+st.set_page_config(page_title="Meu Treino", layout="centered")
 
 # Estilização Águia (Preto, Azul Escuro e Dourado)
 st.markdown(f"""
@@ -17,13 +17,14 @@ st.markdown(f"""
     .ex-desc {{ color: #999999; font-size: 0.85rem; font-style: italic; margin-bottom: 20px; margin-left: 28px; line-height: 1.3; }}
     h1, h2, h3 {{ color: #002366; font-family: 'Arial Black', sans-serif; }}
     .stExpander {{ border: 1px solid #002366; border-radius: 8px; background-color: #0a0a0a; margin-bottom: 10px; }}
+    .metric-card {{ background-color: #0a0a0a; border: 1px solid #D4AF37; padding: 15px; border-radius: 10px; text-align: center; }}
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🦅 Painel de Treino Águia")
-st.write(f"Registro de: **{data_hoje.strftime('%d/%m/%Y')}**")
+st.title("🚲 Treino Bike")
+st.write(f"Hoje é: **{data_hoje.strftime('%d/%m/%Y')}**")
 
-# 2. BANCO DE DADOS COM AS DESCRIÇÕES COMPLETAS DA PLANILHA
+# 2. BANCO DE DADOS COMPLETO
 exercicios_dict = {
     "🚀 Aquecimento (Pré-Pedal)": {
         "Rotação de Pescoço": "Gire a cabeça lentamente 5 vezes para cada lado.",
@@ -49,67 +50,69 @@ exercicios_dict = {
     }
 }
 
-# 3. CARREGAR HISTÓRICO
+# 3. LÓGICA DE CARREGAMENTO (Com reset diário)
 def carregar_dados():
     if os.path.exists("historico_treino.csv"):
-        try:
-            df = pd.read_csv("historico_treino.csv")
-            df['Data'] = pd.to_datetime(df['Data']).dt.date
-            return df
-        except:
-            return pd.DataFrame(columns=["Data", "Exercicio", "Status"])
+        df = pd.read_csv("historico_treino.csv")
+        df['Data'] = pd.to_datetime(df['Data']).dt.date
+        return df
     return pd.DataFrame(columns=["Data", "Exercicio", "Status"])
 
 df_historico = carregar_dados()
 
-# Verificar o que já foi concluído hoje
+# Só recupera o que foi concluído se a data for EXATAMENTE a de hoje
 feitos_hoje = df_historico[(df_historico['Data'] == data_hoje) & (df_historico['Status'] == "Concluído")]['Exercicio'].tolist()
 
-# 4. INTERFACE
-st.subheader("O que concluímos hoje?")
+# 4. INTERFACE DE MARCAÇÃO
+st.subheader("Progresso do Dia")
 progresso_atual = []
 
 for categoria, itens in exercicios_dict.items():
     with st.expander(categoria):
         for ex, desc in itens.items():
-            # Checkbox já vem marcado se você já salvou antes no mesmo dia
-            foi_feito = ex in feitos_hoje
-            check = st.checkbox(ex, value=foi_feito, key=f"chk_{ex}")
-            
-            # Texto explicativo detalhado
+            check = st.checkbox(ex, value=(ex in feitos_hoje), key=f"chk_{ex}")
             st.markdown(f'<div class="ex-desc">{desc}</div>', unsafe_allow_html=True)
             
+            # Registra o estado para salvar (Concluído ou Pendente)
             status = "Concluído" if check else "Pendente"
             progresso_atual.append({"Data": data_hoje, "Exercicio": ex, "Status": status})
 
-# 5. BOTÃO DE SALVAR (Substitui os dados de hoje, sem duplicar)
+# 5. CÁLCULO DE PORCENTAGEM
+total_ex = len(progresso_atual)
+concluidos_hoje = sum(1 for p in progresso_atual if p['Status'] == "Concluído")
+porcentagem = (concluidos_hoje / total_ex) * 100
+
+st.markdown(f"""
+    <div class="metric-card">
+        <span style="color: #D4AF37; font-size: 1.2rem; font-weight: bold;">Comprometimento Águia</span><br>
+        <span style="font-size: 2.5rem; color: #ffffff;">{porcentagem:.0f}%</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+# 6. BOTÃO SALVAR (Edição em tempo real)
+st.write("")
 if st.button("SALVAR PROGRESSO ATUAL"):
     df_novo_hoje = pd.DataFrame(progresso_atual)
     df_sem_hoje = df_historico[df_historico['Data'] != data_hoje]
     df_final = pd.concat([df_sem_hoje, df_novo_hoje], ignore_index=True)
     
     df_final.to_csv("historico_treino.csv", index=False)
-    st.success(f"✅ Atualizado com sucesso! (Último registro: {datetime.now().strftime('%H:%M')})")
+    st.success(f"✅ Salvo! Continue assim.")
     st.rerun()
 
-# 6. HISTÓRICO DETALHADO
+# 7. HISTÓRICO DETALHADO (Com Pendentes)
 st.markdown("---")
-if st.checkbox("📊 Ver Mapa de Disciplina"):
+if st.checkbox("📊 Ver Detalhes do Histórico"):
     if not df_historico.empty:
-        st.write("Histórico dos últimos 7 dias de treino:")
-        
-        # Filtra apenas os exercícios do nosso dicionário
+        # Mostra os últimos 7 dias registrados
         lista_validos = [ex for cat in exercicios_dict.values() for ex in cat.keys()]
         df_view = df_historico[df_historico['Exercicio'].isin(lista_validos)]
         
-        # Cria a tabela cruzada (Data x Exercício)
-        pivot_df = df_view.pivot_table(index='Data', columns='Exercicio', values='Status', aggfunc='first')
+        # Tabela pivô para ver o que foi feito (Concluído) e o que não foi (Pendente)
+        mapa_disciplina = df_view.pivot_table(index='Data', columns='Exercicio', values='Status', aggfunc='first')
         
-        # Exibe a tabela (você pode arrastar para os lados no celular)
-        st.dataframe(pivot_df.tail(7), use_container_width=True)
-        
-        # Resumo rápido
-        concluidos = sum(1 for p in progresso_atual if p['Status'] == 'Concluído')
-        st.info(f"Hoje você completou {concluidos} de {len(progresso_atual)} exercícios.")
+        # Ordena para os dias mais recentes aparecerem por último
+        st.write("Mapa de Disciplina (Pendente vs Concluído):")
+        st.dataframe(mapa_disciplina.tail(10), use_container_width=True)
     else:
-        st.info("O histórico aparecerá aqui após o primeiro uso.")
+        st.info("O histórico aparecerá após você salvar pela primeira vez.")
