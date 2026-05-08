@@ -84,7 +84,7 @@ porcentagem = (concluidos_hoje / total_ex) * 100
 
 st.markdown(f"""
     <div class="metric-card">
-        <span style="color: #D4AF37; font-size: 1.2rem; font-weight: bold;">Comprometimento Águia</span><br>
+        <span style="color: #D4AF37; font-size: 1.2rem; font-weight: bold;">Comprometimento</span><br>
         <span style="font-size: 2.5rem; color: #ffffff;">{porcentagem:.0f}%</span>
     </div>
     """, unsafe_allow_html=True)
